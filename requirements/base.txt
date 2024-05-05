@@ -1,0 +1,22 @@
+argon2-cffi==23.1.0  # https://github.com/hynek/argon2_cffi
+asgiref==3.8.1
+sqlparse==0.5.0
+redis==5.0.4  # https://github.com/redis/redis-py
+hiredis==2.3.2  # https://github.com/redis/hiredis-py
+whitenoise==6.6.0  # https://github.com/evansd/whitenoise
+
+# Django
+# ------------------------------------------------------------------------------
+Django==4.2.11
+django==4.2.11  # pyup: < 5.0  # https://www.djangoproject.com/
+django-environ==0.11.2  # https://github.com/joke2k/django-environ
+django-model-utils==4.5.0  # https://github.com/jazzband/django-model-utils
+django-redis==5.4.0  # https://github.com/jazzband/django-redis
+# Django REST Framework
+djangorestframework==3.15.1  # https://github.com/encode/django-rest-framework
+django-cors-headers==4.3.1  # https://github.com/adamchainz/django-cors-headers
+# DRF-spectacular for api documentation
+drf-spectacular==0.27.2  # https://github.com/tfranzel/drf-spectacular
+
+# App
+httpx==0.27.0
