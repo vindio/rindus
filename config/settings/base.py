@@ -50,7 +50,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = []
 
-LOCAL_APPS = []
+LOCAL_APPS = ["blog"]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -79,7 +79,6 @@ TEMPLATES = [
                 "django.template.context_processors.i18n",
                 "django.template.context_processors.media",
                 "django.template.context_processors.static",
-                "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
             ],
         },
