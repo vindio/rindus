@@ -18,6 +18,12 @@ repos:
       - id: check-case-conflict
       - id: check-docstring-first
       - id: detect-private-key
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: name-tests-test
+        args: ["--django"]
 
   - repo: https://github.com/adamchainz/django-upgrade
     rev: '1.16.0'
@@ -27,7 +33,7 @@ repos:
 
   # Run the Ruff linter.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.2
+    rev: v0.4.3
     hooks:
       # Linter
       - id: ruff
@@ -41,7 +47,21 @@ repos:
       - id: djlint-reformat-django
       - id: djlint-django
 
-# sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.8
+    hooks:
+      - id: bandit
+        args:
+          ["-iii", "-ll"]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.10.0"
+    hooks:
+      - id: mypy
+        exclude:
+          "[a-zA-Z]*/(migrations)/(.)*"
+        additional_dependencies: [djangorestframework-stubs, django-stubs, django-environ, djangorestframework, django-cors-headers, drf-spectacular, psycopg2]
+
+          # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 ci:
   autoupdate_schedule: weekly
   skip: []
