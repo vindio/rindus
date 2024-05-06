@@ -25,6 +25,10 @@ plugins = [
     "mypy_django_plugin.main",
     "mypy_drf_plugin.main",
 ]
+strict_optional = true
+
+[tool.mypy_django_plugin]
+ignore_missing_model_attributes = true
 
 [[tool.mypy.overrides]]
 # Django migrations should not produce any errors:
@@ -77,6 +81,7 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
+    ".venv",
     "*/migrations/*.py",
     "staticfiles/*"
 ]
@@ -172,3 +177,6 @@ line-ending = "auto"
 
 [tool.ruff.lint.isort]
 force-single-line = true
+
+[tool.flake8]
+max-line-length = 88
