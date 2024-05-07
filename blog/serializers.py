@@ -1,9 +1,26 @@
 from rest_framework import serializers
 
+from blog.models import DEFAULT_USER_ID
 from blog.models import Comment
 from blog.models import Post
 
-DEFAULT_USER_ID = 99999942
+
+class PostSerializer(serializers.ModelSerializer[Post]):
+    class Meta:
+        model = Post
+        fields = ["id", "user_id", "title", "body"]
+        read_only_fields = ["id", "user_id"]
+
+    def create(self, validated_data) -> Post:
+        validated_data["user_id"] = DEFAULT_USER_ID
+        return Post.objects.create(**validated_data)
+
+
+class CommentSerializer(serializers.ModelSerializer[Comment]):
+    class Meta:
+        model = Comment
+        fields = ["id", "post", "name", "email", "body"]
+        read_only_fields = ["id"]
 
 
 class RemotePostListSerializer(serializers.ListSerializer):

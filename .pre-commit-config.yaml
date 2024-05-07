@@ -22,8 +22,9 @@ repos:
       - id: check-case-conflict
       - id: check-executables-have-shebangs
       - id: check-merge-conflict
-      - id: name-tests-test
-        args: ["--django"]
+      # Disabled because it doesn't allow factories.py inside tests/
+      # - id: name-tests-test
+      #   args: ["--django"]
 
   - repo: https://github.com/adamchainz/django-upgrade
     rev: '1.16.0'

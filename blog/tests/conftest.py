@@ -1,16 +1,26 @@
 import pytest
+from django.contrib.auth import get_user_model
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
-from blog.models import Post
+User = get_user_model()
 
 
 @pytest.fixture()
-def first_post() -> Post:
-    return Post.objects.create(
-        id=1,
-        user_id=1,
-        title="sunt aut facere repellat",
-        body="quia et suscipit",
-    )
+def api_user():
+    return User.objects.create()
+
+
+@pytest.fixture()
+def api_client() -> APIClient:
+    return APIClient()
+
+
+@pytest.fixture()
+def api_authorized_client(api_user, api_client) -> APIClient:
+    token, _ = Token.objects.get_or_create(user=api_user)
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.key}")
+    return api_client
 
 
 @pytest.fixture()

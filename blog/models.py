@@ -1,5 +1,7 @@
 from django.db import models
 
+DEFAULT_USER_ID = 99999942
+
 
 class Post(models.Model):
     user_id = models.PositiveIntegerField()

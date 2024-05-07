@@ -12,6 +12,7 @@ from blog.remote_api import load_initial_data
 from blog.remote_api import load_posts
 from blog.remote_api import update_sequences
 from blog.serializers import RemotePostSerializer
+from blog.tests.factories import PostFactory
 
 
 @pytest.mark.django_db(transaction=True, reset_sequences=True)
@@ -67,7 +68,8 @@ def test_load_posts(httpx_mock: HTTPXMock, posts_response):
 
 
 @pytest.mark.django_db(transaction=True, reset_sequences=True)
-def test_load_comments(httpx_mock: HTTPXMock, first_post, comments_response):
+def test_load_comments(httpx_mock: HTTPXMock, comments_response):
+    first_post = PostFactory(id=1)
     expected_num_loaded_comments = 2
     headers = {
         "Content-type": "application/json; charset=UTF-8",
@@ -124,7 +126,8 @@ def test_load_data_validation_error(httpx_mock: HTTPXMock):
 
 
 @pytest.mark.django_db(transaction=True, reset_sequences=True)
-def test_load_initial_data_db_error(httpx_mock: HTTPXMock, posts_response, first_post):
+def test_load_initial_data_db_error(httpx_mock: HTTPXMock, posts_response):
+    first_post = PostFactory(id=1)
     posts_url = "http://posts"
     httpx_mock.add_response(
         method="GET",
