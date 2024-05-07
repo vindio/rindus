@@ -17,9 +17,9 @@ class SyncStatusMixin(models.Model):
         default=SyncStatus.CREATED,
     )
 
-    all_objects = models.Manager()
     objects: SyncStatusManager = SyncStatusManager()
     deleted: DeletedManager = DeletedManager()
+    all_objects = models.Manager()
 
     class Meta:
         abstract = True
