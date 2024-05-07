@@ -9,6 +9,7 @@ from django.db.utils import Error
 from rest_framework.serializers import BaseSerializer
 from rest_framework.serializers import ValidationError
 
+from blog.managers import SyncStatus
 from blog.models import Comment
 from blog.models import Post
 from blog.serializers import RemoteCommentSerializer
@@ -30,7 +31,7 @@ def _load_data(
     s = serializer(data=r.json(), many=True)
     try:
         if s.is_valid(raise_exception=True):
-            objects = s.save()
+            objects = s.save(status=SyncStatus.SYNCED)
             num_items = len(objects)  # type: ignore[arg-type]
     except ValidationError as e:
         model_name = model._meta.verbose_name_plural  # noqa: SLF001
@@ -57,6 +58,8 @@ def update_sequences(model_list: Sequence[type[Model]]):
 def load_initial_data(posts_url: str, comments_url: str) -> tuple[int, int]:
     """
     Gets posts and comments from remote API and saves them to database.
+    Posts and Comments status is set to SYNCED.
+
     Returns the number of imported posts and the number of imported comments.
 
     Raises LoadRemoteDataError in case of error.
