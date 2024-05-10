@@ -15,13 +15,13 @@ from blog.tests.factories import PostFactory
         ("deleted", DeletedManager),
     ],
 )
-def test_sync_status_managers(attribute, cls):
+def test_sync_status_managers(attribute, cls) -> None:
     manager = getattr(Post, attribute)
     assert isinstance(manager, cls)
 
 
 @pytest.mark.django_db()
-def test_sync_status_manager_created():
+def test_sync_status_manager_created() -> None:
     num_status_created = 2
     posts = [
         *PostFactory.build_batch(num_status_created, status=Post.SyncStatus.CREATED),
@@ -36,7 +36,7 @@ def test_sync_status_manager_created():
 
 
 @pytest.mark.django_db()
-def test_sync_status_manager_updated():
+def test_sync_status_manager_updated() -> None:
     num_status_updated = 2
     posts = [
         PostFactory.build(status=Post.SyncStatus.CREATED),
@@ -51,7 +51,7 @@ def test_sync_status_manager_updated():
 
 
 @pytest.mark.django_db()
-def test_sync_status_manager_synced():
+def test_sync_status_manager_synced() -> None:
     num_status_synced = 2
     posts = [
         PostFactory.build(status=Post.SyncStatus.CREATED),
@@ -66,7 +66,7 @@ def test_sync_status_manager_synced():
 
 
 @pytest.mark.django_db()
-def test_sync_status_manager_deleted():
+def test_sync_status_manager_deleted() -> None:
     num_status_deleted = 2
     posts = [
         PostFactory.build(status=Post.SyncStatus.CREATED),
@@ -81,7 +81,7 @@ def test_sync_status_manager_deleted():
 
 
 @pytest.mark.django_db()
-def test_sync_status_manager_delete():
+def test_sync_status_manager_delete() -> None:
     num_posts = 4
     posts = [
         PostFactory.build(status=Post.SyncStatus.CREATED),
@@ -98,7 +98,7 @@ def test_sync_status_manager_delete():
 
 
 @pytest.mark.django_db()
-def test_sync_status_manager_real_delete():
+def test_sync_status_manager_real_delete() -> None:
     num_posts = 5
     num_status_deleted = 2
     posts = [
@@ -116,7 +116,7 @@ def test_sync_status_manager_real_delete():
 
 
 @pytest.mark.django_db()
-def test_deleted_manager_real_delete():
+def test_deleted_manager_real_delete() -> None:
     num_posts = 4
     num_posts_expected = 3
     posts = [

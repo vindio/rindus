@@ -1,83 +1,123 @@
-from collections.abc import Sequence
+from collections.abc import Iterable
 
 import httpx
-from django.core.management.color import no_style
-from django.db import connection
-from django.db import transaction
-from django.db.models import Model
-from django.db.utils import Error
+from django.db import models
 from rest_framework.serializers import BaseSerializer
-from rest_framework.serializers import ValidationError
-
-from blog.managers import SyncStatus
-from blog.models import Comment
-from blog.models import Post
-from blog.serializers import RemoteCommentSerializer
-from blog.serializers import RemotePostSerializer
 
 
-class LoadRemoteDataError(Exception):
+class RemoteAPIError(Exception):
     pass
 
 
-def _load_data(
-    client: httpx.Client,
-    url: str,
-    model: type[Post | Comment],
-    serializer: type[BaseSerializer[Post | Comment]],
-) -> int:
-    num_items = 0
-    r = client.get(url)
-    s = serializer(data=r.json(), many=True)
-    try:
-        if s.is_valid(raise_exception=True):
-            objects = s.save(status=SyncStatus.SYNCED)
-            num_items = len(objects)  # type: ignore[arg-type]
-    except ValidationError as e:
-        model_name = model._meta.verbose_name_plural  # noqa: SLF001
-        msg = f"Error loading {model_name}: {s.errors!r}."
-        raise LoadRemoteDataError(msg) from e
-    return num_items
+class JSONAPIClient:
+    CONTENT_TYPE_JSON = {"Content-type": "application/json; charset=UTF-8"}
+
+    def __init__(
+        self, client: httpx.Client, base_url: str, headers: dict[str, str] | None = None
+    ) -> None:
+        self.base_url = base_url
+        self.client = client
+        self.headers = headers or {}
+        self.headers.update(self.CONTENT_TYPE_JSON)
+
+    def get_detail_url(self, pk: int) -> str:
+        return f"{self.base_url.rstrip('/')}/{pk}"
+
+    def retrieve(self, pk: int) -> dict:
+        url = self.get_detail_url(pk)
+        response = self.client.get(url, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def retrieve_list(self) -> list[dict]:
+        response = self.client.get(self.base_url, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def update(self, pk: int, data: dict) -> dict:
+        url = self.get_detail_url(pk)
+        response = self.client.put(url, json=data, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def create(self, data: dict) -> dict:
+        response = self.client.post(self.base_url, json=data, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def delete(self, pk: int) -> None:
+        url = self.get_detail_url(pk)
+        response = self.client.delete(url, headers=self.headers)
+        response.raise_for_status()
 
 
-def load_posts(client: httpx.Client, url: str) -> int:
-    return _load_data(client, url, Post, RemotePostSerializer)
+class RemoteModelAPI:
+    def __init__(
+        self,
+        client: JSONAPIClient,
+        model_name: str,
+        serializer: type[BaseSerializer[models.Model]],
+    ) -> None:
+        self.client = client
+        self.model_name = model_name
+        self.serializer = serializer
 
+    def serialize_object(self, obj: models.Model) -> dict:
+        return self.serializer(obj).data
 
-def load_comments(client: httpx.Client, url: str) -> int:
-    return _load_data(client, url, Comment, RemoteCommentSerializer)
+    def get_initial_data(self) -> list[models.Model]:
+        instances: list[models.Model] = []
+        try:
+            data = self.client.retrieve_list()
+            serializer = self.serializer(data=data, many=True)
+            if serializer.is_valid():
+                instances = serializer.save()  # type: ignore[assignment]
+            else:
+                error_msg = f"Error loading {self.model_name}: {serializer.errors!r}."
+                raise RemoteAPIError(error_msg)
+        except httpx.HTTPError as exc:
+            error_msg = f"An error occurred while requesting {exc.request.url!r}: {exc}"
+            raise RemoteAPIError(error_msg) from exc
+        return instances
 
+    def sync_created(
+        self, objects: Iterable[models.Model]
+    ) -> tuple[list[models.Model], list[tuple[models.Model, Exception]]]:
+        return self._sync("create", objects)
 
-def update_sequences(model_list: Sequence[type[Model]]):
-    sequence_sql = connection.ops.sequence_reset_sql(no_style(), model_list)
-    with connection.cursor() as cursor:
-        for sql in sequence_sql:
-            cursor.execute(sql)
+    def sync_updated(
+        self, objects: Iterable[models.Model]
+    ) -> tuple[list[models.Model], list[tuple[models.Model, Exception]]]:
+        return self._sync("update", objects)
 
+    def sync_deleted(
+        self, objects: Iterable[models.Model]
+    ) -> tuple[list[models.Model], list[tuple[models.Model, Exception]]]:
+        return self._sync("delete", objects)
 
-def load_initial_data(posts_url: str, comments_url: str) -> tuple[int, int]:
-    """
-    Gets posts and comments from remote API and saves them to database.
-    Posts and Comments status is set to SYNCED.
-
-    Returns the number of imported posts and the number of imported comments.
-
-    Raises LoadRemoteDataError in case of error.
-    """
-    num_posts = num_comments = 0
-    headers = {
-        "Content-type": "application/json; charset=UTF-8",
-    }
-    try:
-        with transaction.atomic():
-            with transaction.atomic(), httpx.Client(headers=headers) as client:
-                num_posts = load_posts(client, posts_url)
-                num_comments = load_comments(client, comments_url)
-            update_sequences([Post, Comment])
-    except httpx.RequestError as e:
-        msg = f"An error occurred while requesting {e.request.url!r}.: {e}"
-        raise LoadRemoteDataError(msg) from e
-    except Error as e:
-        msg = f"An error occurred saving data: {e}"
-        raise LoadRemoteDataError(msg) from e
-    return num_posts, num_comments
+    def _sync(
+        self, method: str, objects: Iterable[models.Model]
+    ) -> tuple[list[models.Model], list[tuple[models.Model, Exception]]]:
+        errors: list[tuple[models.Model, Exception]] = []
+        synced_models: list[models.Model] = []
+        for obj in objects:
+            try:
+                match method:
+                    case "delete":
+                        self.client.delete(obj.pk)
+                    case "create":
+                        data = self.serialize_object(obj)
+                        self.client.create(data)
+                    case "update":
+                        data = self.serialize_object(obj)
+                        self.client.update(obj.pk, data)
+                    case _:
+                        error_msg = (
+                            f"Error syncronazing {self.model_name}: "
+                            f"{method} is not a valid method name"
+                        )
+                        raise RemoteAPIError(error_msg)
+                synced_models.append(obj)
+            except httpx.HTTPError as exc:
+                errors.append((obj, exc))
+        return synced_models, errors

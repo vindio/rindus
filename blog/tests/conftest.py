@@ -1,7 +1,10 @@
+import httpx
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
+
+from blog.remote_api import JSONAPIClient
 
 User = get_user_model()
 
@@ -17,10 +20,20 @@ def api_client() -> APIClient:
 
 
 @pytest.fixture()
-def api_authorized_client(api_user, api_client) -> APIClient:
+def api_authorized_client(api_user, api_client: APIClient) -> APIClient:
     token, _ = Token.objects.get_or_create(user=api_user)
     api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.key}")
     return api_client
+
+
+@pytest.fixture()
+def httpx_client() -> httpx.Client:
+    return httpx.Client()
+
+
+@pytest.fixture()
+def json_api_client(httpx_client: httpx.Client) -> JSONAPIClient:
+    return JSONAPIClient(httpx_client, "http://test/blog")
 
 
 @pytest.fixture()

@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from django.db import models
 from django.db import transaction
 
@@ -6,6 +8,14 @@ from blog.managers import SyncStatus
 from blog.managers import SyncStatusManager
 
 DEFAULT_USER_ID = 99999942
+
+
+def set_status_to_synced(
+    model: type["SyncStatusMixin"], objects: Iterable["SyncStatusMixin"]
+) -> None:
+    for obj in objects:
+        obj.status = model.SyncStatus.SYNCED
+    model.objects.bulk_update(objects, ["status"])
 
 
 class SyncStatusMixin(models.Model):
@@ -31,7 +41,7 @@ class SyncStatusMixin(models.Model):
         force_update=False,  # noqa: FBT002
         using=None,
         update_fields=None,
-    ):
+    ) -> None:
         """
         Saves object instance updating SyncStatus
 
@@ -70,7 +80,7 @@ class SyncStatusMixin(models.Model):
     def is_synced(self) -> bool:
         return self.status == SyncStatus.SYNCED
 
-    def sync(self):
+    def sync(self) -> None:
         self.status = SyncStatus.SYNCED
         self.save(update_fields=("status",))
 
@@ -83,11 +93,12 @@ class Post(SyncStatusMixin):
     def __str__(self) -> str:
         return self.title
 
-    def delete(self, using=None, keep_parents=False):  # noqa: FBT002
+    def delete(self, using=None, keep_parents=False) -> tuple[int, dict[str, int]]:  # noqa: FBT002
         with transaction.atomic():
             self.comments.update(status=SyncStatus.DELETED)
             self.status = SyncStatus.DELETED
             self.save(update_fields=("status",))
+        return 0, {}
 
 
 class Comment(SyncStatusMixin):
